@@ -23,8 +23,7 @@ jobs:
 
       - name: Install Doc Dependencies
         run: |
-          apt install python3-sphinx
-          apt install python3-sphinx-autodoc-typehints
+          pipx install sphinx sphinx-autodoc-typehints
         
       - name: Build Documentation
         run: |
