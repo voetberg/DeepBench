@@ -24,12 +24,11 @@ jobs:
       - name: Install Sphinx-Build 
         run: |
           sudo apt install python3-sphinx
-          pipx install sphinx_autodoc_typehints
 
       - name: Build Documentation
         run: |
           cd docs/
-          make html
+          poetry run make html
         
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
