@@ -21,6 +21,11 @@ jobs:
           cache: 'poetry'
       - run: poetry install
         
+      - name: Install Sphinx-Build 
+        run: |
+          sudo apt install python3-sphinx
+          pipx install sphinx_autodoc_typehints
+
       - name: Build Documentation
         run: |
           cd docs/
