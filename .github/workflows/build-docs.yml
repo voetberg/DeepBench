@@ -33,7 +33,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deepbench_documentation
+          name: github-pages
           path: docs/_build/html/
 
   deploy:
