@@ -1,3 +1,6 @@
+Discussions
+=========================
+
 .. raw:: html
 
 <script src="https://giscus.app/client.js"
