@@ -19,6 +19,7 @@ Welcome to DeepBench's documentation!
    physics_object
    shapes
    example
+   disccusion
 
 .. image:: repository_support/DeepBench.png
    :width: 800
