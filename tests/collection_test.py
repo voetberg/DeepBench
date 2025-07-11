@@ -235,3 +235,46 @@ def test_save_results_yes_path(default_physics):
     collection = Collection(default_physics)
     collection.add_object()
     collection.save()
+
+
+def test_parameterize_dataset_pendulum(): 
+    from deepbench.scripts.parameterize_dataset import ParameterizeDataset
+    import yaml
+    import h5py 
+    import tempfile
+
+
+    n_runs = 10
+    n_time_steps = 100
+    config = {
+        "object_type": "physics",
+        "object_name": "Pendulum",
+        "total_runs": n_runs,
+        "parameter_noise": 0.01,
+        "image_parameters": {
+            "starting_angle_radians": [0.1, 3.14],
+            "pendulum_arm_length": [0.1, 2.0],
+            "acceleration_due_to_gravity": [1.0, 12.0],
+        },
+        "object_parameters": {
+            "time_start": [0.0, 2.0], 
+            "time_end": [5.0, 10.0],
+            "n_steps": [n_time_steps, n_time_steps],
+        }
+
+    }
+    c = tempfile.NamedTemporaryFile(delete=False, suffix=".yaml").name
+    with open(c, "w") as f:
+        yaml.dump(config, f)
+
+    name = "./scrap_pendulum_data.h5"
+    ParameterizeDataset(
+        c
+    )(name=name)
+
+    with h5py.File(name, "r") as f:
+        assert f['thetas'].shape == (n_runs, 3)
+        assert f['xs'].shape == (n_runs, 3)
+        assert f['ys'].shape == (n_runs, n_time_steps)
+        
+    os.remove(name)

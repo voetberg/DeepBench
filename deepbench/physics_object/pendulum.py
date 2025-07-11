@@ -20,6 +20,7 @@ class Pendulum(PhysicsObject):
             "big_G_newton": None,
             "phi_planet": None,
         },
+        parameter_noise: Optional[float] = None,
         acceleration_due_to_gravity: Optional[float] = None,
         big_G_newton: Optional[float] = None,
         phi_planet: Optional[float] = None,
@@ -37,6 +38,8 @@ class Pendulum(PhysicsObject):
                 level to be applied to each parameter. The default is no
                 noise. Each number is the standard deviation when
                 multiplied by the parameter. See create_noise().
+            parameter_noise (float): The noise level to be applied to all
+                parameters, if noise_std_percent is not provided.
             acceleration_due_to_gravity (float): little g, local gravity
                 coefficient, optional if G and phi are defined,
                 g = G * phi
@@ -70,9 +73,10 @@ class Pendulum(PhysicsObject):
 
         self.pendulum_arm_length = pendulum_arm_length
         self.starting_angle_radians = starting_angle_radians
-        assert (
-            self.starting_angle_radians < np.pi
-        ), "The angle better not be in degrees or else"
+        if self.starting_angle_radians > np.pi:
+            print("Warning: starting_angle_radians should be in radians, not degrees.")
+            self.starting_angle_radians = starting_angle_radians - np.pi
+
         self.big_G_newton = big_G_newton
         self.phi_planet = phi_planet
         if acceleration_due_to_gravity is None:
@@ -102,6 +106,11 @@ class Pendulum(PhysicsObject):
         # Verify the requested noise parameters are variables you can use
         for key, item in noise_std_percent.items():
             assert key in [key for key in self.__dict__.keys()]
+        
+        if parameter_noise is not None:
+            for key in noise_std_percent.keys():
+                noise_std_percent[key] = parameter_noise
+
         # If the acceleration_due_to_gravity is None,
         # then the accompanying noise parameter also needs to be none
         # otherwise the noise module will be confused
@@ -164,6 +173,7 @@ class Pendulum(PhysicsObject):
         # Save the random state only if noisy
         if noiseless is False:
             self.logfile.info(str(rs.get_state()[1][0]))
+
         for key in self._noise_level.keys():
             if key not in self.parameter_map:
                 raise ValueError(f"Invalid parameter name: {key}")
@@ -172,7 +182,7 @@ class Pendulum(PhysicsObject):
             noise_level = self._noise_level[key]
             if verbose:
                 print("key", key, "attribute", attribute, "noise level", noise_level)
-            if noise_level is not None:
+            if (noise_level is not None) and (attribute is not None):
                 attribute = rs.normal(
                     loc=attribute, scale=attribute * noise_level, size=n_steps
                 )
@@ -215,12 +225,15 @@ class Pendulum(PhysicsObject):
         for key in self._noise_level.keys():
             if key not in self.parameter_map:
                 raise ValueError(f"Invalid parameter name: {key}")
-            attribute = self.initial_parameters[key]
+            attribute = self.initial_parameters.get(key)
             setattr(self, key, attribute)
 
     def create_object(
         self,
-        time: Union[float, np.array],
+        time: Optional[Union[float, np.array]] = None,
+        time_start: Optional[float] = 0.0,
+        time_end: Optional[float] = 10.0,
+        n_steps: Optional[int] = 100,
         noiseless: bool = False,
         seed: int = None,
         verbose: bool = False,
@@ -231,8 +244,11 @@ class Pendulum(PhysicsObject):
         parameter.
 
         Args:
-            time (Union[float, np.array]): A single moment in time, or
-                an array of times (s)
+            time (Optional(Union[float, np.array])): A single moment in time, or
+                an array of times (s). If not provided, a linear spacing will be defined based on (time_start, time_end, time_steps).
+            time_start (Optional[float]): The start time of the simulation. Ignored if a time array is provided.
+            time_end (Optional[float]): The end time of the simulation. Ignored if a time array is provided.
+            n_steps (Optional[int]): The number of time steps to simulate. Ignored if a time array is provided.
             noiseless (bool): Enables a noise realization if True.
                 Default is set to False
             seed (int): Random seed used to generate Gaussian noise
@@ -242,14 +258,18 @@ class Pendulum(PhysicsObject):
             >>> time = np.array(np.linspace(0, 10, 20))
             >>> pend_position = pendulum.create_object(time, noiseless=True)
         """
-        time = np.asarray(time)
-        assert time.size > 0, "you must enter one or more points in time"
-        if isinstance(time, (float, int)):
-            n_steps = 1
-        else:
+        if time is not None: 
             time = np.asarray(time)
-            n_steps = time.shape
-        self.create_noise(seed=seed, noiseless=noiseless, n_steps=n_steps)
+            assert time.size > 0, "you must enter one or more points in time"
+            if isinstance(time, (float, int)):
+                n_steps = 1
+            else:
+                time = np.asarray(time)
+                n_steps = time.shape
+        else:
+            time = np.linspace(time_start, time_end, int(n_steps))
+
+        self.create_noise(seed=seed, noiseless=noiseless, n_steps=int(n_steps))
         if noiseless:
             self.destroy_noise()
         pendulum = self.simulate_pendulum_dynamics(time)
